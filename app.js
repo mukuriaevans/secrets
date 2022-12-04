@@ -4,7 +4,8 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const ejs = require('ejs');
 const mongoose = require('mongoose');
-const encrypt = require('mongoose-encryption');
+const bcrypt = require('bcrypt');
+const saltRounds = 10;
 
 const app = express();
 
@@ -14,6 +15,7 @@ app.use(bodyParser.urlencoded({extended:true}));
 
 mongoose.connect('mongodb://localhost:27017/userDB');
 
+
 const userSchema = new mongoose.Schema({
     email: String,
     password: String
@@ -21,7 +23,7 @@ const userSchema = new mongoose.Schema({
 
 
 const secret = process.env.SECRET;
-userSchema.plugin(encrypt, {secret:secret, encryptedFields: ['password']});
+
 
 const User = mongoose.model('User', userSchema);
 
@@ -36,18 +38,25 @@ app.get('/login', function(req, res){
 });
 
 app.post('/register', function(req, res){
-    const newUser = new User({
-        email: req.body.username,
-        password: req.body.password
+
+    bcrypt.hash(req.body.password, saltRounds, function(err, hash) {
+        // Store hash in your password DB.
+        const newUser = new User({
+            email: req.body.username,
+            password:hash
+        });
+    
+        newUser.save(function(err){
+            if(!err){
+                res.render('secrets');
+            }else{
+                console.log(err);
+            }
+        });
     });
 
-    newUser.save(function(err){
-        if(!err){
-            res.render('secrets');
-        }else{
-            console.log(err);
-        }
-    });
+
+    
 });
 
 app.post('/login', function(req, res){
@@ -59,12 +68,15 @@ app.post('/login', function(req, res){
             console.log(err);
         }else{
             if(foundUser){
-                if(foundUser.password === password){
-                    res.render('secrets');
-                }else{
-                    console.log("Wrong username or password! Try again");
-                    res.redirect('/login');
-                }
+                bcrypt.compare(password, foundUser.password, function(err, result) {
+                    // result == true
+                    if(result === true){
+                        res.render('secrets');
+                    }else{
+                        console.log("Wrong password or username");
+                        res.redirect('/login');
+                    }
+                });
             }
         }
     });
