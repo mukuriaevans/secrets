@@ -40,6 +40,7 @@ const userSchema = new mongoose.Schema({
 });
 const  secretSchema = new mongoose.Schema({
     user: String,
+    title: String,
     secret: String
 });
 
@@ -153,6 +154,7 @@ app.get('/submit', function(req, res){
 app.post('/submit', function(req, res){
     const submittedSecret = new Secret({
         user: req.user.id,
+        title: req.body.secretTitle,
         secret: req.body.secret});
     submittedSecret.save();
     res.redirect('/secrets');
